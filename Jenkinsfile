@@ -28,6 +28,15 @@ pipeline {
       }
     }
 
+  stage('Verify Docker') {
+    steps {
+      sh '''
+        docker version
+        docker compose version
+      '''
+    }
+  }  
+
     stage('Install Dependencies') {
       steps {
         sh 'npm ci'
