@@ -11,6 +11,10 @@ pipeline {
     DOCKER_IMAGE = "grc-vuln-dashboard:${BUILD_NUMBER}"
   }
 
+  tools {
+    nodejs 'NodeJS 20'
+  }
+
   stages {
     stage('Checkout') {
       steps {
