@@ -21,6 +21,12 @@ pipeline {
         checkout scm
       }
     }
+ 
+  stage('Verify NodeJS') {
+      steps {
+        sh 'node -v'
+      }
+    }
 
     stage('Install Dependencies') {
       steps {
