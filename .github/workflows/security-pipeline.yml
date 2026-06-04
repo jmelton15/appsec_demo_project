@@ -1,0 +1,112 @@
+name: Security Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "Dockerfile"
+      - ".github/workflows/**"
+
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      scan_level:
+        description: Security scan depth
+        required: true
+        default: quick
+        type: choice
+        options:
+          - quick
+          - full
+      run_security_scans:
+        description: Run Semgrep, Gitleaks, and npm audit
+        required: true
+        default: true
+        type: boolean
+
+env:
+  APP_NAME: grc-vuln-dashboard
+  DOCKER_IMAGE: grc-vuln-dashboard:${{ github.run_number }}
+
+jobs:
+  security-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Verify NodeJS
+        run: node -v
+
+      - name: Verify Docker
+        run: |
+          docker version
+          docker compose version
+
+      - name: Prepare scan directories
+        run: |
+          mkdir -p scans/gitleaks scans/semgrep scans/npm-audit
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app
+        run: npm run build
+
+      - name: Build Docker image
+        run: docker build -t "$DOCKER_IMAGE" .
+
+      - name: Run Gitleaks
+        if: ${{ github.event.inputs.run_security_scans != 'false' }}
+        continue-on-error: true
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo" \
+            zricethezav/gitleaks:latest \
+            detect \
+            --source=/repo \
+            --report-format=json \
+            --report-path=/repo/scans/gitleaks/gitleaks.json \
+            --no-git
+
+      - name: Run Semgrep
+        if: ${{ github.event.inputs.run_security_scans != 'false' }}
+        continue-on-error: true
+        run: |
+          docker run --rm \
+            -v "$PWD:/src" \
+            semgrep/semgrep:latest \
+            semgrep scan \
+            --config=auto \
+            --json \
+            --output=/src/scans/semgrep/semgrep.json \
+            /src
+
+      - name: Run npm audit
+        if: ${{ github.event.inputs.run_security_scans != 'false' }}
+        continue-on-error: true
+        run: |
+          npm audit --json > scans/npm-audit/npm-audit.json || true
+
+      - name: Upload scan results
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-results
+          path: scans/
