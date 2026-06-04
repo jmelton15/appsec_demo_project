@@ -7,6 +7,9 @@ on:
       - develop
     paths:
       - "src/**"
+      - "app/**"
+      - "pages/**"
+      - "components/**"
       - "package.json"
       - "package-lock.json"
       - "Dockerfile"
@@ -16,6 +19,7 @@ on:
     branches:
       - main
       - develop
+
   workflow_dispatch:
     inputs:
       scan_level:
