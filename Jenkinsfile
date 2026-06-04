@@ -75,15 +75,13 @@ pipeline {
     }
 
     stage('Semgrep SAST') {
-      when {
-        expression { return params.RUN_SECURITY_SCANS }
-      }
       steps {
         sh '''
+          rm -f scans/semgrep/semgrep-results.json
           mkdir -p scans/semgrep
 
           docker run --rm \
-            -v "${WORKSPACE}:/src" \
+            --volumes-from "$HOSTNAME" \
             semgrep/semgrep \
             semgrep scan \
               --config p/javascript \
@@ -91,8 +89,8 @@ pipeline {
               --config p/react \
               --no-git-ignore \
               --json \
-              --output /src/scans/semgrep/semgrep-results.json \
-              /src/src || true
+              --output "$WORKSPACE/scans/semgrep/semgrep-results.json" \
+              "$WORKSPACE/src" || true
 
           cat scans/semgrep/semgrep-results.json || true
         '''
@@ -100,18 +98,20 @@ pipeline {
     }
 
     stage('Gitleaks Secret Scan') {
-      when {
-        expression { return params.RUN_SECURITY_SCANS }
-      }
       steps {
         sh '''
+          rm -f scans/gitleaks/gitleaks-results.json
           mkdir -p scans/gitleaks
 
           docker run --rm \
-            -v "${WORKSPACE}:/repo" \
-            --entrypoint sh \
+            --volumes-from "$HOSTNAME" \
             zricethezav/gitleaks:latest \
-            -c "mkdir -p /repo/scans/gitleaks && gitleaks detect --source=/repo --no-git --report-format json --report-path /repo/scans/gitleaks/gitleaks-results.json --verbose" || true
+            detect \
+              --source="$WORKSPACE" \
+              --no-git \
+              --report-format json \
+              --report-path "$WORKSPACE/scans/gitleaks/gitleaks-results.json" \
+              --verbose || true
 
           cat scans/gitleaks/gitleaks-results.json || true
         '''
