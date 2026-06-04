@@ -70,7 +70,7 @@ pipeline {
       steps {
         sh '''
           docker run --rm \
-            -v "$(pwd):/src" \
+            -v "${WORKSPACE}:/src" \
             semgrep/semgrep \
             semgrep scan \
               --config auto \
@@ -87,8 +87,10 @@ pipeline {
       }
       steps {
         sh '''
+          mkdir -p "${WORKSPACE}/scans/gitleaks"
+
           docker run --rm \
-            -v "$(pwd):/repo" \
+            -v "${WORKSPACE}:/repo" \
             zricethezav/gitleaks:latest \
             detect \
               --source=/repo \
