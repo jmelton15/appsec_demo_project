@@ -12,7 +12,7 @@ pipeline {
   }
 
   tools {
-    nodejs 'NodeJS'
+    nodejs 'NodeJS-26'
   }
 
   stages {
