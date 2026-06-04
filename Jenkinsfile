@@ -64,38 +64,48 @@ pipeline {
     }
 
     stage('Semgrep SAST') {
-      when {
-        expression { return params.RUN_SECURITY_SCANS }
-      }
       steps {
         sh '''
-          docker run --rm \
+          mkdir -p scans/semgrep
+
+          docker rm -f semgrep-scan-temp || true
+
+          docker run --name semgrep-scan-temp \
             -v "${WORKSPACE}:/src" \
             semgrep/semgrep \
             semgrep scan \
               --config auto \
               --json \
-              --output /src/scans/semgrep/semgrep-results.json \
+              --output /tmp/semgrep-results.json \
               /src || true
+
+          docker cp semgrep-scan-temp:/tmp/semgrep-results.json scans/semgrep/semgrep-results.json || true
+          docker rm -f semgrep-scan-temp || true
+
+          ls -la scans/semgrep
         '''
       }
     }
 
     stage('Gitleaks Secret Scan') {
-      when {
-        expression { return params.RUN_SECURITY_SCANS }
-      }
       steps {
         sh '''
-          mkdir -p "${WORKSPACE}/scans/gitleaks"
+          mkdir -p scans/gitleaks
 
-          docker run --rm \
+          docker rm -f gitleaks-scan-temp || true
+
+          docker run --name gitleaks-scan-temp \
             -v "${WORKSPACE}:/repo" \
             zricethezav/gitleaks:latest \
             detect \
               --source=/repo \
               --report-format json \
-              --report-path /repo/scans/gitleaks/gitleaks-results.json || true
+              --report-path /tmp/gitleaks-results.json || true
+
+          docker cp gitleaks-scan-temp:/tmp/gitleaks-results.json scans/gitleaks/gitleaks-results.json || true
+          docker rm -f gitleaks-scan-temp || true
+
+          ls -la scans/gitleaks
         '''
       }
     }
