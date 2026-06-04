@@ -89,11 +89,11 @@ pipeline {
               --config p/javascript \
               --config p/typescript \
               --config p/react \
+              --no-git-ignore \
               --json \
               --output /src/scans/semgrep/semgrep-results.json \
-              /src || true
+              /src/src || true
 
-          ls -la scans/semgrep
           cat scans/semgrep/semgrep-results.json || true
         '''
       }
@@ -109,14 +109,10 @@ pipeline {
 
           docker run --rm \
             -v "${WORKSPACE}:/repo" \
+            --entrypoint sh \
             zricethezav/gitleaks:latest \
-            detect \
-              --source=/repo \
-              --report-format json \
-              --report-path /repo/scans/gitleaks/gitleaks-results.json \
-              --verbose || true
+            -c "mkdir -p /repo/scans/gitleaks && gitleaks detect --source=/repo --no-git --report-format json --report-path /repo/scans/gitleaks/gitleaks-results.json --verbose" || true
 
-          ls -la scans/gitleaks
           cat scans/gitleaks/gitleaks-results.json || true
         '''
       }
